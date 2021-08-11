@@ -2,7 +2,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from scipy import stats
 
-from mog.consts import EPSILON
+from consts import EPSILON
 
 
 def plot_gaussians(weights_, means_, variances_):

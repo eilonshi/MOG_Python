@@ -1,18 +1,19 @@
 import numpy as np
 
-from mog.consts import ALPHA, NUM_OF_GAUSSIANS, DISTANCE_THRESHOLD, VAR_DEFAULT
-from mog.utils import calc_mahalanobis_distances, plot_gaussians, get_random_from_2_gaussians
+from experiment.utils import calc_mahalanobis_distances, plot_gaussians, get_random_from_2_gaussians
+from mog.consts import HISTORY_DEFAULT, NUM_OF_GAUSSIANS, VAR_DEFAULT, VAR_THRESHOLD_DEFAULT, ALPHA
 
 
 class MOG:
 
-    def __init__(self, num_of_gaussians: int = NUM_OF_GAUSSIANS, var_default: float = VAR_DEFAULT,
-                 distance_threshold: float = DISTANCE_THRESHOLD, alpha: float = ALPHA):
+    def __init__(self, history: int = HISTORY_DEFAULT, num_of_gaussians: int = NUM_OF_GAUSSIANS,
+                 var_default: float = VAR_DEFAULT, var_threshold: float = VAR_THRESHOLD_DEFAULT, alpha: float = ALPHA):
+        self.history = history
         self.weights = np.zeros(num_of_gaussians) + 1
         self.means = np.zeros(num_of_gaussians) + 20
         self.var_default = var_default
         self.variances = np.asarray([var_default])
-        self.distance_threshold = distance_threshold
+        self.distance_threshold = var_threshold
         self.alpha = alpha
         self.epsilon = 1e-8
 
