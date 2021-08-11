@@ -2,8 +2,6 @@ import numpy as np
 from matplotlib import pyplot as plt
 from scipy import stats
 
-from consts import EPSILON
-
 
 def plot_gaussians(weights_, means_, variances_):
     sigmas = np.sqrt(variances_)
@@ -24,7 +22,3 @@ def get_random_from_2_gaussians():
         mean, sigma = 5, 0.5  # mean and standard deviation
 
     return np.random.normal(mean, sigma, 1)
-
-
-def calc_mahalanobis_distances(deltas, variances):
-    return np.sqrt(deltas ** 2 / (variances + EPSILON))
