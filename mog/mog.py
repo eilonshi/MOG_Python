@@ -24,19 +24,26 @@ class MOG:
         self.weights = None
 
     def update_background_model(self, new_frame: np.ndarray, plot: bool = False):
+        print(self.num_iterations)
+
         if self.num_iterations == 0:
             self._initialize_members(new_frame)
             self.num_iterations += 1
             return
 
-        distances_, deltas = self._calc_distances_and_deltas(new_frame)
-        min_distance_index = np.min(distances_, axis=-1)
+        assert len(new_frame.shape) == 3
 
-        indices_far_from_modes = min_distance_index > self.var_threshold
-        indices_close_to_modes = min_distance_index <= self.var_threshold
+        for row in range(new_frame.shape[0]):
+            for column in range(new_frame.shape[1]):
+                for channel in range(new_frame.shape[2]):
+                    distances_, deltas = self._calc_distances_and_deltas(new_frame, position=(row, column, channel))
+                    min_distance_index = np.min(distances_, axis=-1)
 
-        self._add_new_modes(new_frame, indices_far_from_modes)
-        self._update_existing_modes(distances_, deltas, indices_close_to_modes)
+                    indices_far_from_modes = np.asarray(min_distance_index > self.var_threshold)
+                    indices_close_to_modes = np.asarray(min_distance_index <= self.var_threshold)
+
+                    self._add_new_modes(new_frame, indices_far_from_modes)
+                    self._update_existing_modes(distances_, deltas, indices_close_to_modes)
 
         if plot:
             plot_gaussians(self.weights, self.means, self.variances)
@@ -47,39 +54,44 @@ class MOG:
         print('variances:', self.variances)
         print()
 
-    def is_background(self, new_frame: np.ndarray) -> np.ndarray:
-        distances, _ = self._calc_distances_and_deltas(new_frame)
+    def apply(self, new_frame: np.ndarray) -> np.ndarray:
+        self.update_background_model(new_frame)
+
+        result_image = np.zeros_like(new_frame)
+
+        for row in range(new_frame.shape[0]):
+            for column in range(new_frame.shape[1]):
+                for channel in range(new_frame.shape[2]):
+                    result_image[row, column, channel] = self._is_background(new_frame, position=(row, column, channel))
+
+        return result_image
+
+    def _is_background(self, new_frame: np.ndarray, position: Tuple[int, int, int]) -> bool:
+        distances, _ = self._calc_distances_and_deltas(new_frame, position)
 
         if np.min(distances) > self.var_threshold:
             return False
 
         return True
 
-    def apply(self, frame: np.ndarray) -> np.ndarray:
-        self.update_background_model(frame)
-
-        return self.is_background(frame)
-
     def _initialize_members(self, first_frame):
-        self.means = first_frame.copy()
-        self.means = np.expand_dims(self.means, axis=3)
+        self.means = [[[np.asarray([pixel_value]) for pixel_value in channel] for channel in row] for row in
+                      first_frame]
+        self.variances = [[[np.asarray([self.var_default]) for _ in channel] for channel in row] for row in first_frame]
+        self.weights = [[[np.asarray([1]) for _ in channel] for channel in row] for row in first_frame]
 
-        self.variances = self.variances = np.zeros_like(first_frame) + self.var_default
-        self.variances = np.expand_dims(self.variances, axis=3)
-
-        self.weights = np.zeros_like(first_frame)
-        self.weights = np.expand_dims(self.weights, axis=3)
-
-    def _calc_distances_and_deltas(self, new_frame: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-        deltas = np.expand_dims(new_frame, axis=3) - self.means
-        distances = calc_mahalanobis_distances(deltas, self.variances)
+    def _calc_distances_and_deltas(self, new_frame: np.ndarray, position: Tuple[int, int, int]) -> \
+            Tuple[np.ndarray, np.ndarray]:
+        deltas = new_frame[position] - self.means[position[0]][position[1]][position[2]]
+        distances = calc_mahalanobis_distances(deltas, self.variances[position[0]][position[1]][position[2]])
 
         return distances, deltas
 
     def _add_new_modes(self, new_frame: np.ndarray, indices: np.ndarray):
-        self.weights[indices] = np.append(self.weights[indices], self.alpha)
-        self.means[indices] = np.append(self.means[indices], new_frame)
-        self.variances[indices] = np.append(self.variances[indices], self.var_default)
+        for index in indices:
+            self.weights[index[0]][index[1]][index[2]].append(self.alpha)
+            self.means[index[0]][index[1]][index[2]].append(new_frame[index[0]][index[1]][index[2]])
+            self.variances[index[0]][index[1]][index[2]].append(self.var_default)
 
     def _update_existing_modes(self, distances_: np.ndarray, deltas: np.ndarray, indices: np.ndarray):
         ownerships = np.zeros_like(distances_)
@@ -107,4 +119,4 @@ if __name__ == '__main__':
     check_list = [-5, 0, 2, 4, 5, 7]
 
     for value in check_list:
-        print(mog.is_background(value))
+        print(mog._is_background(value))
