@@ -9,6 +9,8 @@ if __name__ == '__main__':
                                                  'provided by OpenCV. You can process both videos and images.')
     parser.add_argument('--input', type=str, help='Path to a video or a sequence of image.',
                         default='data/scene_1.1_reg.avi')
+    parser.add_argument('--show', type=str, help='Boolean which says if to show the result.',
+                        default=False)
     args = parser.parse_args()
 
     backSub = MOG()
@@ -28,8 +30,9 @@ if __name__ == '__main__':
         cv.putText(frame, str(capture.get(cv.CAP_PROP_POS_FRAMES)), (15, 15),
                    cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0))
 
-        cv.imshow('Frame', frame)
-        cv.imshow('FG Mask', fgMask)
+        if args.show:
+            cv.imshow('Frame', frame)
+            cv.imshow('FG Mask', fgMask)
 
         keyboard = cv.waitKey(30)
         if keyboard == 'q' or keyboard == 27:
